@@ -1,0 +1,71 @@
+# ============================================================
+# RT-DETR 钢轨缺陷检测评估配置文件
+# ============================================================
+
+# -----------------------------------------------------------
+# 数据集（评估时只用验证集）
+# -----------------------------------------------------------
+val_img_dir: data/val/images
+val_ann_file: data/val/annotations.json
+
+# 类别数（与训练保持一致）
+num_classes: 10
+
+# -----------------------------------------------------------
+# 图像预处理（与训练保持一致）
+# -----------------------------------------------------------
+img_size: [640, 640]
+mean: [0.485, 0.456, 0.406]
+std: [0.229, 0.224, 0.225]
+
+# -----------------------------------------------------------
+# 模型结构（与训练保持一致）
+# -----------------------------------------------------------
+backbone_depth: 50
+backbone_variant: d
+backbone_return_idx: [0, 1, 2, 3]
+freeze_at: 0
+pretrained_backbone: false   # 评估时加载 checkpoint，无需 ImageNet 预训练
+
+use_soep: true
+soep_p2_channels: 256
+soep_p3_channels: 512
+soep_out_channels: 512
+soep_spd_scale: 2
+soep_large_k: 31
+
+encoder_hidden_dim: 256
+encoder_nhead: 8
+encoder_dim_feedforward: 1024
+encoder_use_encoder_idx: [2]
+encoder_num_encoder_layers: 1
+encoder_expansion: 1.0
+encoder_depth_mult: 1.0
+
+hidden_dim: 256
+num_queries: 300
+num_decoder_layers: 6
+num_denoising: 0       # 评估时关闭去噪训练
+label_noise_ratio: 0.5
+box_noise_scale: 1.0
+
+# -----------------------------------------------------------
+# 评估超参数
+# -----------------------------------------------------------
+val_batch_size: 4
+num_workers: 4
+
+# 后处理 Top-K 数量
+num_top_queries: 300
+
+# -----------------------------------------------------------
+# 权重文件路径
+# -----------------------------------------------------------
+# 模型权重路径（支持 checkpoint.pth 或 best_map50.pth）
+checkpoint: work_dirs/rail_defect_rtdetr/best_map50.pth
+
+# -----------------------------------------------------------
+# 输出设置
+# -----------------------------------------------------------
+output_dir: work_dirs/eval_results
+print_freq: 50

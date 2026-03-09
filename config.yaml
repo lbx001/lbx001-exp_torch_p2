@@ -1,0 +1,142 @@
+# ============================================================
+# RT-DETR 钢轨缺陷检测训练配置文件
+# 项目：lbx001-exp_torch_p2
+# ============================================================
+
+# -----------------------------------------------------------
+# 数据集设置
+# -----------------------------------------------------------
+# 训练集图像目录（绝对路径或相对于项目根目录的路径）
+train_img_dir: data/train/images
+# 训练集标注文件（COCO JSON 格式）
+train_ann_file: data/train/annotations.json
+# 验证集图像目录
+val_img_dir: data/val/images
+# 验证集标注文件
+val_ann_file: data/val/annotations.json
+
+# 目标类别数（例如：钢轨缺陷类型数）
+num_classes: 10
+
+# -----------------------------------------------------------
+# 图像预处理
+# -----------------------------------------------------------
+# 输入图像尺寸 [H, W]（正方形时可以填单一整数）
+img_size: [640, 640]
+
+# 图像归一化均值（ImageNet标准）
+mean: [0.485, 0.456, 0.406]
+# 图像归一化标准差
+std: [0.229, 0.224, 0.225]
+
+# -----------------------------------------------------------
+# 模型结构
+# -----------------------------------------------------------
+# 骨干网络深度（支持 50 / 101）
+backbone_depth: 50
+# 骨干网络变体（'d' 表示 ResNet-vd 改进版本）
+backbone_variant: d
+# 返回的特征层索引（0=C2, 1=C3, 2=C4, 3=C5）
+backbone_return_idx: [0, 1, 2, 3]
+# 冻结骨干前 N 个阶段（0=不冻结）
+freeze_at: 0
+# 是否使用 ImageNet 预训练权重
+pretrained_backbone: true
+
+# 是否启用 SOEP 模块（小目标增强处理）
+use_soep: true
+# SOEP 模块参数
+soep_p2_channels: 256    # P2 特征通道数（对应 backbone C2 输出）
+soep_p3_channels: 512    # P3 特征通道数（对应 backbone C3 输出）
+soep_out_channels: 512   # SOEP 输出通道数
+soep_spd_scale: 2        # SPDConv 空间下采样倍率
+soep_large_k: 31         # OmniKernel 大卷积核尺寸
+
+# HybridEncoder 参数
+encoder_hidden_dim: 256           # 编码器隐层维度
+encoder_nhead: 8                  # 多头注意力头数
+encoder_dim_feedforward: 1024     # FFN 中间维度
+encoder_use_encoder_idx: [2]      # 在哪些特征层使用 AIFI
+encoder_num_encoder_layers: 1     # AIFI Transformer 层数
+encoder_expansion: 1.0            # RepC3 扩展比例
+encoder_depth_mult: 1.0           # 深度缩放系数
+
+# RTDETRTransformer 解码器参数
+hidden_dim: 256           # 解码器隐层维度
+num_queries: 300          # 查询数量
+num_decoder_layers: 6     # 解码器层数
+num_denoising: 100        # DN（去噪）训练查询数
+label_noise_ratio: 0.5   # DN 训练标签噪声比率
+box_noise_scale: 1.0     # DN 训练框噪声尺度
+
+# -----------------------------------------------------------
+# 损失函数权重
+# -----------------------------------------------------------
+loss_weight_cls: 1.0      # 分类损失权重（Focal Loss）
+loss_weight_bbox: 5.0     # L1 框回归损失权重
+loss_weight_giou: 2.0     # GIoU 损失权重
+
+# Hungarian Matcher 代价系数
+matcher_cost_class: 2.0
+matcher_cost_bbox: 5.0
+matcher_cost_giou: 2.0
+
+# Focal Loss 超参数
+focal_alpha: 0.25
+focal_gamma: 2.0
+
+# -----------------------------------------------------------
+# 训练超参数
+# -----------------------------------------------------------
+# 总训练轮数
+epoches: 150
+# 训练批次大小
+batch_size: 8
+# 验证批次大小
+val_batch_size: 4
+# 数据加载器 worker 数量
+num_workers: 4
+
+# 初始学习率
+lr: 0.0001
+# 骨干网络学习率（通常比 head 小一个数量级）
+backbone_lr: 0.00001
+# 权重衰减
+weight_decay: 0.0001
+# 最小学习率（Cosine Annealing 结束值）
+min_lr: 0.000001
+# Warmup 轮数
+warmup_epochs: 1
+
+# 梯度裁剪最大范数
+clip_max_norm: 0.1
+
+# -----------------------------------------------------------
+# 训练技巧
+# -----------------------------------------------------------
+# 是否使用混合精度训练（AMP）
+use_amp: true
+# 是否使用 EMA（指数移动平均）
+use_ema: true
+# EMA 衰减系数
+ema_decay: 0.9999
+
+# 多尺度训练图像尺寸列表（null 表示关闭）
+multi_scale: [480, 512, 544, 576, 608, 640, 640, 640, 672, 704, 736, 768, 800]
+
+# -----------------------------------------------------------
+# 早停设置
+# -----------------------------------------------------------
+early_stopping:
+  # 是否启用早停
+  enabled: true
+  # 早停耐心值（连续 N 个 epoch mAP50 未提升则停止）
+  patience: 30
+
+# -----------------------------------------------------------
+# 输出设置
+# -----------------------------------------------------------
+# 训练结果保存目录
+output_dir: work_dirs/rail_defect_rtdetr
+# 日志打印频率（每 N 步）
+print_freq: 50
