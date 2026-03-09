@@ -1,71 +1,39 @@
-# ============================================================
-# RT-DETR 钢轨缺陷检测评估配置文件
-# ============================================================
+# =========================================
+# RT-DETR 评估配置
+# 使用方法：python eval.py
+# =========================================
 
-# -----------------------------------------------------------
-# 数据集（评估时只用验证集）
-# -----------------------------------------------------------
-val_img_dir: data/val/images
-val_ann_file: data/val/annotations.json
+# 评估设置
+eval:
+  # 模型权重路径；留空则自动在 work_dir 下查找 best_map50.pth
+  # 示例：work_dirs/rtdetr_l/rtdetr_train_20260309_120000/best_map50.pth
+  checkpoint: ''
 
-# 类别数（与训练保持一致）
-num_classes: 10
+  # 评估批大小（不影响精度，仅影响速度）
+  batch_size: 4
 
-# -----------------------------------------------------------
-# 图像预处理（与训练保持一致）
-# -----------------------------------------------------------
-img_size: [640, 640]
-mean: [0.485, 0.456, 0.406]
-std: [0.229, 0.224, 0.225]
+  # 数据加载线程数
+  num_workers: 4
 
-# -----------------------------------------------------------
-# 模型结构（与训练保持一致）
-# -----------------------------------------------------------
-backbone_depth: 50
-backbone_variant: d
-backbone_return_idx: [0, 1, 2, 3]
-freeze_at: 0
-pretrained_backbone: false   # 评估时加载 checkpoint，无需 ImageNet 预训练
+  # 评估输入图像尺寸 [H, W]
+  imgsz: [640, 640]
 
-use_soep: true
-soep_p2_channels: 256
-soep_p3_channels: 512
-soep_out_channels: 512
-soep_spd_scale: 2
-soep_large_k: 31
+  # 输出置信度阈值（低于此值的检测框不输出）
+  conf_threshold: 0.5
 
-encoder_hidden_dim: 256
-encoder_nhead: 8
-encoder_dim_feedforward: 1024
-encoder_use_encoder_idx: [2]
-encoder_num_encoder_layers: 1
-encoder_expansion: 1.0
-encoder_depth_mult: 1.0
+  # 工作目录（用于查找 best_map50.pth 和保存评估结果）
+  work_dir: work_dirs/rtdetr_l
 
-hidden_dim: 256
-num_queries: 300
-num_decoder_layers: 6
-num_denoising: 0       # 评估时关闭去噪训练
-label_noise_ratio: 0.5
-box_noise_scale: 1.0
+# 数据集设置（需与训练时一致）
+dataset:
+  # 验证集图像目录
+  val_img_dir: ''     # 留空则从 config.yaml 的 dataset.output_root 自动推断
+  # 验证集标注文件
+  val_ann_file: ''    # 留空则自动推断
 
-# -----------------------------------------------------------
-# 评估超参数
-# -----------------------------------------------------------
-val_batch_size: 4
-num_workers: 4
-
-# 后处理 Top-K 数量
-num_top_queries: 300
-
-# -----------------------------------------------------------
-# 权重文件路径
-# -----------------------------------------------------------
-# 模型权重路径（支持 checkpoint.pth 或 best_map50.pth）
-checkpoint: work_dirs/rail_defect_rtdetr/best_map50.pth
-
-# -----------------------------------------------------------
-# 输出设置
-# -----------------------------------------------------------
-output_dir: work_dirs/eval_results
-print_freq: 50
+  # 类别名称（按 category_id 顺序，从 0 开始）
+  # 与训练时 remap 后的顺序一致
+  class_names:
+    - chipping
+    - scrach
+    - seams

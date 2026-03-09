@@ -1,142 +1,157 @@
-# ============================================================
-# RT-DETR 钢轨缺陷检测训练配置文件
-# 项目：lbx001-exp_torch_p2
-# ============================================================
+# =========================================
+# RT-DETR 训练配置（自定义 COCO 数据集）
+# 钢轨缺陷检测项目（chipping / scrach / seams）
+# =========================================
 
-# -----------------------------------------------------------
+# --------------------------------------------------
+# 项目基础设置
+# --------------------------------------------------
+project:
+  name: rtdetr                        # 项目名称
+  work_dir: work_dirs/rtdetr_l        # 训练结果根目录，每次运行会在此下创建带时间戳的子目录
+  seed: 237                           # 全局随机种子，保证可复现性
+
+# --------------------------------------------------
 # 数据集设置
-# -----------------------------------------------------------
-# 训练集图像目录（绝对路径或相对于项目根目录的路径）
-train_img_dir: data/train/images
-# 训练集标注文件（COCO JSON 格式）
-train_ann_file: data/train/annotations.json
-# 验证集图像目录
-val_img_dir: data/val/images
-# 验证集标注文件
-val_ann_file: data/val/annotations.json
+# --------------------------------------------------
+dataset:
+  # 原始数据输入根目录（包含 train/test/valid 子目录，每个子目录含 _annotations.coco.json）
+  input_root: /3250609009/workspace/data/rail/railyolo11/big_2k_coco
+  # 处理后数据输出根目录，将生成 train/ 和 val/ 子目录
+  output_root: /3250609009/workspace/data/rail/big_2k_coco_processed_ultra
+  # 是否在训练前自动运行数据准备脚本（true = 自动执行 prepare_data.py）
+  auto_prepare: false
+  # 是否强制重新生成（即使输出目录已存在）
+  force_rebuild: false
 
-# 目标类别数（例如：钢轨缺陷类型数）
-num_classes: 10
+  # 训练/验证分割比例（0.8 表示 80% 用于训练，20% 用于验证）
+  train_ratio: 0.8
+  # 数据集分割随机种子
+  split_seed: 237
+  # 数据采样比例（1.0 = 使用全部数据，0.1 = 使用 10%，调试时可设小值）
+  sample_ratio: 1.0
+  # 去重分隔符：文件名中含此分隔符时按其左侧前缀去重
+  # 例如 abc.rf.123.jpg 与 abc.rf.456.jpg 视为同一原始图像
+  dedup_delim: ".rf."
 
-# -----------------------------------------------------------
-# 图像预处理
-# -----------------------------------------------------------
-# 输入图像尺寸 [H, W]（正方形时可以填单一整数）
-img_size: [640, 640]
+  # 标注文件查找 glob 模式（相对于 input_root）
+  annotation_globs:
+    - '/*/_annotations.coco.json'
+    - '/*/*.coco.json'
 
-# 图像归一化均值（ImageNet标准）
-mean: [0.485, 0.456, 0.406]
-# 图像归一化标准差
-std: [0.229, 0.224, 0.225]
+  # 类别白名单（只保留这些 category_id 的标注；空列表 = 不过滤）
+  # 示例：[1] 保留 category_id=1（子类别 chipping/scrach/seams 的父类）
+  category_id_whitelist: [1]
+  # 类别黑名单（排除这些 category_id）
+  # 示例：[0] 排除 id=0 的背景/父类
+  category_id_blacklist: [0]
+  # 按类别名称排除（字符串列表，空列表 = 不过滤）
+  category_name_blacklist: []
 
-# -----------------------------------------------------------
-# 模型结构
-# -----------------------------------------------------------
-# 骨干网络深度（支持 50 / 101）
-backbone_depth: 50
-# 骨干网络变体（'d' 表示 ResNet-vd 改进版本）
-backbone_variant: d
-# 返回的特征层索引（0=C2, 1=C3, 2=C4, 3=C5）
-backbone_return_idx: [0, 1, 2, 3]
-# 冻结骨干前 N 个阶段（0=不冻结）
-freeze_at: 0
-# 是否使用 ImageNet 预训练权重
-pretrained_backbone: true
+  # 每张图像最多保留的标注数量
+  max_ann_per_image: 200
 
-# 是否启用 SOEP 模块（小目标增强处理）
-use_soep: true
-# SOEP 模块参数
-soep_p2_channels: 256    # P2 特征通道数（对应 backbone C2 输出）
-soep_p3_channels: 512    # P3 特征通道数（对应 backbone C3 输出）
-soep_out_channels: 512   # SOEP 输出通道数
-soep_spd_scale: 2        # SPDConv 空间下采样倍率
-soep_large_k: 31         # OmniKernel 大卷积核尺寸
+  # 图像裁剪设置（将 2048×1536 裁剪为 1536×1536）
+  crop:
+    enabled: true
+    size: 1536                # 裁剪后的目标尺寸（正方形）
+    mode: center              # 裁剪模式：center（居中）/ left（从左）/ right（从右）/ random（随机）
+    seed: 237                 # random 模式时使用的随机种子
 
-# HybridEncoder 参数
-encoder_hidden_dim: 256           # 编码器隐层维度
-encoder_nhead: 8                  # 多头注意力头数
-encoder_dim_feedforward: 1024     # FFN 中间维度
-encoder_use_encoder_idx: [2]      # 在哪些特征层使用 AIFI
-encoder_num_encoder_layers: 1     # AIFI Transformer 层数
-encoder_expansion: 1.0            # RepC3 扩展比例
-encoder_depth_mult: 1.0           # 深度缩放系数
+  # 最小框面积（小于此值的标注将被过滤，单位：像素²）
+  min_box_area: 25
 
-# RTDETRTransformer 解码器参数
-hidden_dim: 256           # 解码器隐层维度
-num_queries: 300          # 查询数量
-num_decoder_layers: 6     # 解码器层数
-num_denoising: 100        # DN（去噪）训练查询数
-label_noise_ratio: 0.5   # DN 训练标签噪声比率
-box_noise_scale: 1.0     # DN 训练框噪声尺度
-
-# -----------------------------------------------------------
-# 损失函数权重
-# -----------------------------------------------------------
-loss_weight_cls: 1.0      # 分类损失权重（Focal Loss）
-loss_weight_bbox: 5.0     # L1 框回归损失权重
-loss_weight_giou: 2.0     # GIoU 损失权重
-
-# Hungarian Matcher 代价系数
-matcher_cost_class: 2.0
-matcher_cost_bbox: 5.0
-matcher_cost_giou: 2.0
-
-# Focal Loss 超参数
-focal_alpha: 0.25
-focal_gamma: 2.0
-
-# -----------------------------------------------------------
+# --------------------------------------------------
 # 训练超参数
-# -----------------------------------------------------------
-# 总训练轮数
-epoches: 150
-# 训练批次大小
-batch_size: 8
-# 验证批次大小
-val_batch_size: 4
-# 数据加载器 worker 数量
-num_workers: 4
+# --------------------------------------------------
+train:
+  # 总训练轮数
+  # 备选值：72（快速验证）/ 100 / 200（充分训练）
+  epoches: 150
 
-# 初始学习率
-lr: 0.0001
-# 骨干网络学习率（通常比 head 小一个数量级）
-backbone_lr: 0.00001
-# 权重衰减
-weight_decay: 0.0001
-# 最小学习率（Cosine Annealing 结束值）
-min_lr: 0.000001
-# Warmup 轮数
-warmup_epochs: 1
+  # 训练批大小
+  # 说明：4090 24G 显卡，输入 1536px 裁剪图→640px resize，batch_size=2 安全；
+  # 若开启 AMP 且 imgsz=640 可尝试 batch_size=4
+  batch_size: 2
 
-# 梯度裁剪最大范数
-clip_max_norm: 0.1
+  # 验证批大小
+  val_batch_size: 4
 
-# -----------------------------------------------------------
-# 训练技巧
-# -----------------------------------------------------------
-# 是否使用混合精度训练（AMP）
-use_amp: true
-# 是否使用 EMA（指数移动平均）
-use_ema: true
-# EMA 衰减系数
-ema_decay: 0.9999
+  # 数据加载线程数
+  num_workers: 4
 
-# 多尺度训练图像尺寸列表（null 表示关闭）
-multi_scale: [480, 512, 544, 576, 608, 640, 640, 640, 672, 704, 736, 768, 800]
+  # 初始学习率（AdamW，针对检测头）
+  # 备选值：0.0002（更激进）/ 0.00005（更保守）
+  lr: 0.0001
 
-# -----------------------------------------------------------
-# 早停设置
-# -----------------------------------------------------------
-early_stopping:
-  # 是否启用早停
-  enabled: true
-  # 早停耐心值（连续 N 个 epoch mAP50 未提升则停止）
-  patience: 30
+  # 骨干网络学习率（通常为 lr 的 1/10）
+  backbone_lr: 0.00001
 
-# -----------------------------------------------------------
-# 输出设置
-# -----------------------------------------------------------
-# 训练结果保存目录
-output_dir: work_dirs/rail_defect_rtdetr
-# 日志打印频率（每 N 步）
-print_freq: 50
+  # 权重衰减（AdamW L2 正则化）
+  weight_decay: 0.0001
+
+  # 梯度裁剪最大范数（0 = 不裁剪）
+  clip_max_norm: 0.1
+
+  # 是否使用 EMA（指数移动平均），评估时使用 EMA 权重
+  use_ema: true
+
+  # 是否使用 AMP（自动混合精度），4090 推荐开启以节省显存并加速
+  use_amp: true
+
+  # RT-DETR 网络输入尺寸（原始图像通过数据增强 resize 到此尺寸）
+  # 备选值：[800, 800] 精度更高但显存更大
+  imgsz: [640, 640]
+
+  # 早停机制
+  early_stopping:
+    enabled: true
+    # 连续 patience 个 epoch mAP50 无提升则停止训练
+    # 备选值：20（激进）/ 50（宽松）
+    patience: 30
+    # 监控指标
+    monitor: map50
+
+  # 数据增强开关
+  augmentation:
+    random_photometric_distort: true  # 随机色彩扰动
+    random_zoom_out: true             # 随机缩小（粘贴到大画布）
+    random_iou_crop: true             # 随机 IoU 裁剪
+    random_horizontal_flip: true      # 随机水平翻转
+
+  # 模型结构设置
+  model:
+    # 骨干网络类型（目前支持 PResNet = ResNet-vd）
+    backbone: PResNet
+    # 骨干网络深度
+    # 备选值：101（精度更高，速度更慢）
+    backbone_depth: 50
+    # HybridEncoder 隐层维度
+    encoder_hidden_dim: 256
+    # 解码器层数
+    num_decoder_layers: 6
+    # 查询数量（检测框候选数）
+    # 备选值：100（更快）/ 500（更精确，但更慢）
+    num_queries: 300
+    # 目标类别数（chipping / scrach / seams）
+    num_classes: 3
+
+  # SOEP 小目标增强模块设置
+  soep:
+    # 是否启用 SOEP 模块
+    enabled: true
+    # SPDConv 空间-深度转换的缩放倍率（2 = 将 H/W 减半，通道数×4）
+    spd_scale: 2
+    # OmniKernel 大卷积核尺寸（论文推荐 31，可尝试 15 加速）
+    omnikernel_large_k: 31
+
+# --------------------------------------------------
+# 评估超参数（train.py 中评估阶段也用这些值）
+# --------------------------------------------------
+eval:
+  checkpoint: ''         # 权重路径；留空则自动寻找 best_map50.pth
+  batch_size: 4          # 评估批大小
+  num_workers: 4         # 数据加载线程数
+  imgsz: [640, 640]      # 评估输入尺寸
+  conf_threshold: 0.5    # 输出置信度阈值
+  work_dir: work_dirs/rtdetr_l  # 评估结果保存目录

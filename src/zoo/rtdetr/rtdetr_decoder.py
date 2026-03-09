@@ -57,8 +57,8 @@ class MSDeformableAttention(nn.Module):
         thetas = torch.arange(self.num_heads, dtype=torch.float32) * (2.0 * math.pi / self.num_heads)
         grid_init = torch.stack([thetas.cos(), thetas.sin()], dim=-1)  # [H, 2]
         grid_init = grid_init / grid_init.abs().max(-1, keepdim=True).values
-        grid_init = grid_init.view(self.num_heads, 1, 1, 2).expand(
-            self.num_heads, self.num_levels, self.num_points, 2)
+        grid_init = grid_init.view(self.num_heads, 1, 1, 2).repeat(
+            1, self.num_levels, self.num_points, 1)
         # Scale by point index
         for i in range(self.num_points):
             grid_init[:, :, i, :] *= (i + 1)
