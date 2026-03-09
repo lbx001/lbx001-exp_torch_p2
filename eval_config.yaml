@@ -1,0 +1,39 @@
+# =========================================
+# RT-DETR 评估配置
+# 使用方法：python eval.py
+# =========================================
+
+# 评估设置
+eval:
+  # 模型权重路径；留空则自动在 work_dir 下查找 best_map50.pth
+  # 示例：work_dirs/rtdetr_l/rtdetr_train_20260309_120000/best_map50.pth
+  checkpoint: ''
+
+  # 评估批大小（不影响精度，仅影响速度）
+  batch_size: 4
+
+  # 数据加载线程数
+  num_workers: 4
+
+  # 评估输入图像尺寸 [H, W]
+  imgsz: [640, 640]
+
+  # 输出置信度阈值（低于此值的检测框不输出）
+  conf_threshold: 0.5
+
+  # 工作目录（用于查找 best_map50.pth 和保存评估结果）
+  work_dir: work_dirs/rtdetr_l
+
+# 数据集设置（需与训练时一致）
+dataset:
+  # 验证集图像目录
+  val_img_dir: ''     # 留空则从 config.yaml 的 dataset.output_root 自动推断
+  # 验证集标注文件
+  val_ann_file: ''    # 留空则自动推断
+
+  # 类别名称（按 category_id 顺序，从 0 开始）
+  # 与训练时 remap 后的顺序一致
+  class_names:
+    - chipping
+    - scrach
+    - seams
