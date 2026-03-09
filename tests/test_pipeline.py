@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
 from PIL import Image, ImageDraw
 
 from rtdetr_pytorch.engine.trainer import evaluate_only, train_model
@@ -108,7 +109,7 @@ class PipelineTestCase(unittest.TestCase):
             self.assertEqual(len(train_payload['images']) + len(val_payload['images']), 4)
 
             config_path = temp_dir / 'config.yaml'
-            config_path.write_text('project: {}\n', encoding='utf-8')
+            config_path.write_text(yaml.safe_dump(config, allow_unicode=True, sort_keys=False), encoding='utf-8')
             summary = train_model(config, config_path)
             self.assertGreaterEqual(summary['best_epoch'], 1)
             run_dir = Path(summary['run_dir'])

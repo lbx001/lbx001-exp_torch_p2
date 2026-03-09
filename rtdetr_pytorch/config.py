@@ -22,7 +22,12 @@ def load_train_config(config_path: str | Path | None = None) -> tuple[Dict[str, 
 def load_eval_config(config_path: str | Path | None = None) -> tuple[Dict[str, Any], Path]:
     eval_file = Path(os.environ.get('RTDETR_EVAL_CONFIG_PATH', config_path or DEFAULT_EVAL_CONFIG_PATH)).resolve()
     eval_cfg = load_yaml(eval_file)
-    base_path = Path(eval_cfg.get('base_config_path') or os.environ.get('RTDETR_CONFIG_PATH', DEFAULT_CONFIG_PATH)).resolve()
+    base_value = eval_cfg.get('base_config_path') or os.environ.get('RTDETR_CONFIG_PATH', DEFAULT_CONFIG_PATH)
+    base_path = Path(base_value)
+    if not base_path.is_absolute():
+        base_path = (eval_file.parent / base_path).resolve()
+    else:
+        base_path = base_path.resolve()
     base_cfg = load_yaml(base_path)
     merged = deep_update(base_cfg, eval_cfg.get('overrides', {}))
     merged['evaluation'] = deep_update(base_cfg.get('evaluation', {}), eval_cfg.get('evaluation', {}))

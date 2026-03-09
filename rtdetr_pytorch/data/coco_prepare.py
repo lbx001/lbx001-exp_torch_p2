@@ -203,11 +203,11 @@ def prepare_dataset(dataset_cfg: Dict[str, Any], logger=None) -> Dict[str, Path]
     input_root = Path(dataset_cfg['input_root'])
     annotation_files = _collect_annotation_files(input_root, dataset_cfg.get('annotation_globs', []))
     if not annotation_files:
-        raise FileNotFoundError(f'未找到 COCO 标注文件: {input_root}')
+        raise FileNotFoundError(f'No COCO annotation files were found under: {input_root}')
 
     records = _load_records(annotation_files)
     if not records:
-        raise RuntimeError('未从标注文件中解析到有效图像记录。')
+        raise RuntimeError('No valid image records were parsed from the annotation files.')
 
     deduped = _deduplicate(records, dataset_cfg.get('dedup_delim', '.rf.'))
     sampled = _sample_records(deduped, float(dataset_cfg.get('sample_ratio', 1.0)), int(dataset_cfg.get('split_seed', 0)))

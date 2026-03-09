@@ -113,10 +113,10 @@ def _resolve_checkpoint(config: Dict[str, Any], run_dir: Path | None = None) -> 
             return candidate
     latest = latest_run_dir(config['project'])
     if latest is None:
-        raise FileNotFoundError('未找到可用的 checkpoint。请先训练或在 eval_config.yaml 中指定 checkpoint.path。')
+        raise FileNotFoundError('No checkpoint was found. Please train first or set checkpoint.path in eval_config.yaml.')
     candidate = latest / 'best_map50.pt'
     if not candidate.exists():
-        raise FileNotFoundError(f'最新运行目录中没有 best_map50.pt: {candidate}')
+        raise FileNotFoundError(f'The latest run directory does not contain best_map50.pt: {candidate}')
     return candidate
 
 
