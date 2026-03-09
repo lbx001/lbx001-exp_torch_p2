@@ -1,0 +1,29 @@
+# =========================================
+# RT-DETR（自定义 COCO 数据集）评估配置
+# =========================================
+# 运行：
+#   python eval.py
+# 说明：
+# - 默认会复用 config.yaml 的主体超参数；这里只写评估时需要覆盖的部分。
+# - 若 checkpoint.path 为空，则自动回退到 project.work_dir 下最新一次 run 的 best_map50.pt。
+
+base_config_path: ./config.yaml
+
+checkpoint:
+  # 手动指定权重时填写绝对路径；留空则自动寻找最新 run 的 best_map50.pt。
+  path: null
+
+evaluation:
+  batch_size: 1
+  num_workers: 2
+  score_threshold: 0.05
+
+overrides:
+  # 可在这里覆盖训练配置中的任意字段；默认保持为空。
+  training: {}
+  model: {}
+  dataset: {}
+  project: {}
+
+inference:
+  max_detections: 150
