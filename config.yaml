@@ -1,0 +1,138 @@
+# =========================================
+# RT-DETR（自定义 COCO 数据集）训练配置
+# =========================================
+# 目标：
+# 1) 数据准备：合并 train/test/valid -> 去重(.rf.) -> 抽样 -> 0.8/0.2 划分
+# 2) 数据准备：裁剪为 1536x1536，并同步修正 bbox；过滤小框/指定类别缺陷
+# 3) 训练：自动保存配置、保存控制台日志、早停(监控 mAP50)、保存 best_map50 权重
+# 运行：
+#   python train.py
+# 说明：
+# - 本项目会把 config.yaml 的“最终生效版本”复制到 work_dir 的 run 目录下，便于复现实验。
+# - 对于 Roboflow 导出的 COCO 数据，文件名通常含有 ".rf."，例如 abc.rf.xxxx.jpg。
+#   我们会以 dedup_delim 为分组依据，只保留每组 1 张原始样本。
+
+project:
+  # 项目名称：用于日志/输出目录标识。
+  name: rtdetr
+  # 训练输出目录：会在该目录下自动创建时间戳 run 子目录。
+  work_dir: work_dirs/rtdetr_l
+  # 全局随机种子：影响抽样、切分、初始化等流程。
+  seed: 237
+
+dataset:
+  # 原始数据根目录（Roboflow 导出的 train/valid/test 放在这里）。
+  input_root: /3250609009/workspace/data/rail/railyolo11/big_2k_coco
+  # 处理后数据输出目录。
+  output_root: /3250609009/workspace/data/rail/big_2k_coco_processed_ultra
+  # 是否在训练前自动执行 merge + dedup + sample + split + crop。
+  auto_prepare: false
+  # 是否强制重新生成处理后的数据。
+  force_rebuild: false
+  # 训练集比例；剩余部分自动作为验证集。
+  train_ratio: 0.8
+  # 数据切分/抽样随机种子；默认与 project.seed 保持一致。
+  split_seed: 237
+  # 抽样比例：1.0 表示不抽样；0.1 表示只保留去重后 10% 的图像。
+  sample_ratio: 1.0
+  # Roboflow 增强图常见的去重分隔符。
+  dedup_delim: .rf.
+  # 在 input_root 下递归搜索 COCO 标注文件的 glob。
+  annotation_globs:
+    - '/_annotations.coco.json'
+    - '/*.coco.json'
+
+  # 类别过滤：
+  # - 如果 whitelist 非空，仅保留白名单类别（blacklist 会被忽略）。
+  # - 如果 whitelist 为空，则会排除 blacklist 和 category_name_blacklist。
+  # 典型三类训练可选：[1, 2, 3]；若 Roboflow 多导出一个伪类别，通常 blacklist 里排除 0。
+  category_id_whitelist: []
+  category_id_blacklist: [0]
+  category_name_blacklist: []
+  # 每张图最多保留多少个框（按 area 从大到小截断）。
+  max_ann_per_image: 200
+
+  crop:
+    # 是否裁剪为 RT-DETR 更友好的正方形输入。
+    enabled: true
+    # 目标裁剪边长（像素）。备选：1280 / 1024。
+    size: 1536
+    # 裁剪方式：center / left / right / random。
+    mode: center
+    # random 模式下的随机种子；center/left/right 时仅用于保持接口一致。
+    seed: 237
+
+  # 过滤过小框：25 代表过滤掉面积小于 25 像素（约 5x5）的目标。
+  # 备选：0（不过滤）、100（更严格）。
+  min_box_area: 25
+
+model:
+  # 如果为 null，则自动从处理后的 categories 中推断类别数。
+  num_classes: null
+  # 轻量骨干网络；4090 可按需切换为 resnet34 / resnet50。
+  backbone: resnet18
+  hidden_dim: 128
+  num_queries: 150
+  nheads: 8
+  num_encoder_layers: 2
+  num_decoder_layers: 3
+  dim_feedforward: 512
+  dropout: 0.1
+  # SOEP：根据论文 3.3 加入的结构增强模块。
+  use_soep: true
+  # 多尺度 token 池化尺寸：大图训练时可控显存。
+  token_pool_sizes: [16, 8, 4]
+
+training:
+  # 总训练轮数。4090 24G 可结合 batch_size、img size 再微调。
+  epochs: 50
+  batch_size: 1
+  num_workers: 4
+  amp: true
+  eos_coef: 0.1
+
+  optimizer:
+    # 备选：adamw / sgd。
+    name: adamw
+    lr: 0.0001
+    weight_decay: 0.0001
+    momentum: 0.9
+
+  scheduler:
+    # 备选：step / cosine。
+    name: cosine
+    step_size: 10
+    gamma: 0.1
+
+  matcher:
+    class_cost: 2.0
+    bbox_cost: 5.0
+    giou_cost: 2.0
+
+  loss_weights:
+    loss_ce: 1.0
+    loss_bbox: 5.0
+    loss_giou: 2.0
+
+  early_stopping:
+    # 连续多少个 epoch 的 mAP50 没有提升就停止。
+    patience: 10
+
+  augmentation:
+    enabled: true
+    horizontal_flip_prob: 0.5
+    color_jitter:
+      brightness: 0.2
+      contrast: 0.2
+      saturation: 0.2
+      hue: 0.02
+
+evaluation:
+  batch_size: 1
+  num_workers: 2
+  # 推理分数阈值，过高会牺牲召回，过低会增加误检。
+  score_threshold: 0.05
+
+inference:
+  # 预留后续 RT-DETR 改进用的推理参数位。
+  max_detections: 150
